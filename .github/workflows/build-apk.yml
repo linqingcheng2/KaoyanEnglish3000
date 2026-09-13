@@ -4,6 +4,11 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main", "master" ]
+    paths-ignore:
+      - "releases/**"
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -56,9 +61,24 @@ jobs:
         working-directory: KaoyanEnglish3000_Android
         run: gradle assembleDebug --stacktrace
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: KaoyanEnglish3000-debug-apk
           path: KaoyanEnglish3000_Android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Publish direct-download APK to repository
+        shell: bash
+        run: |
+          mkdir -p releases
+          cp KaoyanEnglish3000_Android/app/build/outputs/apk/debug/app-debug.apk releases/KaoyanEnglish3000-phone.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add releases/KaoyanEnglish3000-phone.apk
+          if git diff --cached --quiet; then
+            echo "APK unchanged"
+          else
+            git commit -m "Publish direct-download Android APK"
+            git push
+          fi

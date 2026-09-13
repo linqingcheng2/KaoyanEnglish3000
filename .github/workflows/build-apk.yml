@@ -14,7 +14,25 @@ jobs:
       - name: Reconstruct Android project
         shell: bash
         run: |
-          cat project_parts/chunk_*.txt > project.tar.gz.b64
+          python3 - <<'PY'
+          from pathlib import Path
+          fixes = {
+              'chunk_04.txt': (4285, 'i'),
+              'chunk_05.txt': (4783, 'H'),
+          }
+          parts = []
+          for p in sorted(Path('project_parts').glob('chunk_*.txt')):
+              s = p.read_text()
+              if p.name in fixes:
+                  idx, expected = fixes[p.name]
+                  assert len(s) == 7001, (p.name, len(s))
+                  assert s[idx] == expected, (p.name, idx, s[idx])
+                  s = s[:idx] + s[idx+1:]
+              parts.append(s)
+          joined = ''.join(parts)
+          assert len(joined) == 52508, len(joined)
+          Path('project.tar.gz.b64').write_text(joined)
+          PY
           base64 -d project.tar.gz.b64 > project.tar.gz
           tar -xzf project.tar.gz
           test -f KaoyanEnglish3000_Android/app/build.gradle
